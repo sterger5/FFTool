@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:FFTool"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <local:SelectionToBrushConverter x:Key="SelectionToBrushConverter"/>
+
     </Application.Resources>
 </Application>

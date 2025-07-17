@@ -1,40 +1,16 @@
 ﻿using Microsoft.Win32;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Input;
-using System.Windows.Media;
 
 namespace FFTool
 {
-    public class SelectionToBrushConverter : IValueConverter
-    {
-        private Dictionary<string, List<string>> mediaFormats = new Dictionary<string, List<string>>()
-        {
-            { "视频", new List<string> { "mp4", "avi", "mov", "mkv" } },
-            { "音频", new List<string> { "mp3", "wav", "aac", "flac" } },
-            { "图片", new List<string> { "jpg", "png", "bmp", "webp" } }
-        };
-
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            bool isSelected = (bool)value;
-            return isSelected ? new SolidColorBrush(Color.FromRgb(30, 144, 255)) : new SolidColorBrush(Colors.LightGray);
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
     public partial class MainWindow : Window
     {
         private string? selectedFilePath = null;
@@ -42,15 +18,22 @@ namespace FFTool
         private Process? currentProcess = null;
         public ObservableCollection<MediaTypeItem> MediaTypes { get; set; }
 
+        // 定义各种媒体类型对应的格式
+        private readonly Dictionary<string, List<string>> mediaFormats = new()
+        {
+            { "视频", new List<string> { "mp4", "avi", "mkv", "mov", "wmv", "flv", "webm" } },
+            { "音频", new List<string> { "mp3", "wav", "flac", "aac", "ogg", "m4a", "wma" } },
+            { "图片", new List<string> { "jpg", "png", "gif", "bmp", "webp", "tiff", "ico" } }
+        };
+
         public MainWindow()
         {
             InitializeComponent();
 
-            // 设置窗口为屏幕分辨率的 60%
-            double screenWidth = SystemParameters.PrimaryScreenWidth;
-            double screenHeight = SystemParameters.PrimaryScreenHeight;
-            this.Width = screenWidth * 0.6;
-            this.Height = screenHeight * 0.6;
+            // 设置窗口初始大小
+            this.Width = 1000;
+            this.Height = 700;
+
             MediaTypes = new ObservableCollection<MediaTypeItem>
             {
                 new MediaTypeItem { Name = "视频" },
@@ -58,19 +41,78 @@ namespace FFTool
                 new MediaTypeItem { Name = "图片" }
             };
             MediaTypeListBox.ItemsSource = MediaTypes;
+
+            // 默认选择视频类型
+            MediaTypes[0].IsSelected = true;
+            MediaTypeListBox.SelectedIndex = 0;
+            UpdateFormatOptions("视频");
+
+            // 设置默认状态文本
+            StatusText.Text = "准备就绪";
         }
+
         private void MediaTypeListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             foreach (var item in MediaTypes)
                 item.IsSelected = false;
 
             if (MediaTypeListBox.SelectedItem is MediaTypeItem selected)
+            {
                 selected.IsSelected = true;
+                UpdateFormatOptions(selected.Name);
+            }
         }
-        public class MediaTypeItem
+
+        private void UpdateFormatOptions(string mediaType)
         {
-            public string Name { get; set; }
-            public bool IsSelected { get; set; }
+            FormatBox.Items.Clear();
+
+            if (mediaFormats.ContainsKey(mediaType))
+            {
+                foreach (string format in mediaFormats[mediaType])
+                {
+                    ComboBoxItem item = new ComboBoxItem { Content = format };
+                    FormatBox.Items.Add(item);
+                }
+
+                // 默认选择第一个格式
+                if (FormatBox.Items.Count > 0)
+                {
+                    FormatBox.SelectedIndex = 0;
+                }
+            }
+        }
+
+        public class MediaTypeItem : INotifyPropertyChanged
+        {
+            private string name = "";
+            private bool isSelected;
+
+            public string Name
+            {
+                get => name;
+                set
+                {
+                    name = value;
+                    OnPropertyChanged(nameof(Name));
+                }
+            }
+
+            public bool IsSelected
+            {
+                get => isSelected;
+                set
+                {
+                    isSelected = value;
+                    OnPropertyChanged(nameof(IsSelected));
+                }
+            }
+
+            public event PropertyChangedEventHandler? PropertyChanged;
+            protected virtual void OnPropertyChanged(string propertyName)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
         }
 
         private void Browse_Click(object sender, RoutedEventArgs e)
@@ -80,7 +122,7 @@ namespace FFTool
             {
                 selectedFilePath = openFileDialog.FileName;
                 FilePathBox.Text = selectedFilePath;
-                StatusText.Text = "已加载文件";
+                StatusText.Text = "文件已选择";
             }
         }
 
@@ -96,6 +138,7 @@ namespace FFTool
             {
                 selectedOutputPath = dialog.FileName;
                 OutputPathBox.Text = selectedOutputPath;
+                StatusText.Text = "输出目录已设置";
             }
         }
 
@@ -107,7 +150,13 @@ namespace FFTool
                 return;
             }
 
-            string format = selectedItem.Content.ToString();
+            string? format = selectedItem.Content?.ToString();
+            if (string.IsNullOrEmpty(format))
+            {
+                MessageBox.Show("请选择有效的格式。");
+                return;
+            }
+
             string outputDir = string.IsNullOrEmpty(selectedOutputPath)
                 ? Path.GetDirectoryName(selectedFilePath)!
                 : selectedOutputPath;
@@ -140,7 +189,7 @@ namespace FFTool
             {
                 Dispatcher.Invoke(() =>
                 {
-                    StatusText.Text = "转换完成";
+                    StatusText.Text = "✅ 转换完成";
                     ProgressBar.Value = 100;
                 });
             };
@@ -149,12 +198,13 @@ namespace FFTool
             {
                 process.Start();
                 process.BeginErrorReadLine();
-                StatusText.Text = "正在转换...";
+                StatusText.Text = "🔄 正在转换...";
                 ProgressBar.Value = 0;
             }
             catch (Exception ex)
             {
                 MessageBox.Show("转换失败: " + ex.Message);
+                StatusText.Text = "❌ 转换失败";
             }
         }
 
@@ -165,7 +215,7 @@ namespace FFTool
                 try
                 {
                     currentProcess.Kill();
-                    StatusText.Text = "已中止 ❌";
+                    StatusText.Text = "⏹️ 已中止";
                     ProgressBar.Value = 0;
                 }
                 catch (Exception ex)
@@ -194,7 +244,7 @@ namespace FFTool
                 {
                     selectedFilePath = files[0];
                     FilePathBox.Text = selectedFilePath;
-                    StatusText.Text = "已加载文件";
+                    StatusText.Text = "文件已选择";
                 }
             }
         }
