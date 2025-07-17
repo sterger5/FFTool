@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -13,9 +14,13 @@ namespace FFTool
 {
     public partial class MainWindow : Window
     {
+        private bool isNvidiaAvailable = false;
         private string? selectedFilePath = null;
         private string? selectedOutputPath = null;
         private Process? currentProcess = null;
+        private bool isUpdatingSlider = false;
+        private bool isUpdatingTextBox = false;
+
         public ObservableCollection<MediaTypeItem> MediaTypes { get; set; }
 
         // 定义各种媒体类型对应的格式
@@ -31,8 +36,8 @@ namespace FFTool
             InitializeComponent();
 
             // 设置窗口初始大小
-            this.Width = 1000;
-            this.Height = 700;
+            this.Width = 1200;
+            this.Height = 800;
 
             MediaTypes = new ObservableCollection<MediaTypeItem>
             {
@@ -47,8 +52,44 @@ namespace FFTool
             MediaTypeListBox.SelectedIndex = 0;
             UpdateFormatOptions("视频");
 
+            // 检测英伟达硬件加速支持
+            CheckNvidiaAcceleration();
+
             // 设置默认状态文本
             StatusText.Text = "准备就绪";
+        }
+
+        private void CheckNvidiaAcceleration()
+        {
+            try
+            {
+                // 检测是否支持英伟达硬件加速
+                var process = new Process();
+                process.StartInfo.FileName = "ffmpeg";
+                process.StartInfo.Arguments = "-encoders";
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.CreateNoWindow = true;
+
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+
+                // 检查是否包含英伟达编码器
+                isNvidiaAvailable = output.Contains("h264_nvenc") || output.Contains("hevc_nvenc");
+
+                if (!isNvidiaAvailable)
+                {
+                    NvidiaAccelerationCheckBox.IsEnabled = false;
+                    NvidiaAccelerationCheckBox.Content = "英伟达硬件加速不可用 (未检测到支持的显卡或驱动)";
+                }
+            }
+            catch (Exception)
+            {
+                isNvidiaAvailable = false;
+                NvidiaAccelerationCheckBox.IsEnabled = false;
+                NvidiaAccelerationCheckBox.Content = "英伟达硬件加速不可用 (FFmpeg未安装或配置错误)";
+            }
         }
 
         private void MediaTypeListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -60,6 +101,11 @@ namespace FFTool
             {
                 selected.IsSelected = true;
                 UpdateFormatOptions(selected.Name);
+
+                // 显示或隐藏视频参数面板
+                VideoParametersPanel.Visibility = selected.Name == "视频"
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
             }
         }
 
@@ -80,6 +126,84 @@ namespace FFTool
                 {
                     FormatBox.SelectedIndex = 0;
                 }
+            }
+        }
+
+        // 码率滑块值改变事件
+        private void BitrateSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (isUpdatingTextBox) return;
+
+            isUpdatingSlider = true;
+            if (BitrateTextBox != null)
+            {
+                BitrateTextBox.Text = ((int)e.NewValue).ToString();
+            }
+            isUpdatingSlider = false;
+        }
+
+        // 码率文本框改变事件
+        private void BitrateTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (isUpdatingSlider) return;
+
+            if (int.TryParse(BitrateTextBox.Text, out int value))
+            {
+                isUpdatingTextBox = true;
+                if (value >= BitrateSlider.Minimum && value <= BitrateSlider.Maximum)
+                {
+                    BitrateSlider.Value = value;
+                }
+                else if (value < BitrateSlider.Minimum)
+                {
+                    BitrateSlider.Value = BitrateSlider.Minimum;
+                    BitrateTextBox.Text = BitrateSlider.Minimum.ToString();
+                }
+                else if (value > BitrateSlider.Maximum)
+                {
+                    BitrateSlider.Value = BitrateSlider.Maximum;
+                    BitrateTextBox.Text = BitrateSlider.Maximum.ToString();
+                }
+                isUpdatingTextBox = false;
+            }
+        }
+
+        // 帧率滑块值改变事件
+        private void FramerateSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (isUpdatingTextBox) return;
+
+            isUpdatingSlider = true;
+            if (FramerateTextBox != null)
+            {
+                FramerateTextBox.Text = ((int)e.NewValue).ToString();
+            }
+            isUpdatingSlider = false;
+        }
+
+        // 帧率文本框改变事件
+        private void FramerateTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (isUpdatingSlider) return;
+
+            if (int.TryParse(FramerateTextBox.Text, out int value))
+            {
+                isUpdatingTextBox = true;
+                if (value >= FramerateSlider.Minimum && value <= FramerateSlider.Maximum)
+                {
+                    FramerateSlider.Value = value;
+                }
+                else if (value < FramerateSlider.Minimum)
+                {
+                    FramerateSlider.Value = FramerateSlider.Minimum;
+                    FramerateTextBox.Text = FramerateSlider.Minimum.ToString();
+                }
+                else if (value > FramerateSlider.Maximum)
+                {
+                    FramerateSlider.Value = FramerateSlider.Maximum;
+                    FramerateTextBox.Text = FramerateSlider.Maximum.ToString();
+                }
+                isUpdatingTextBox = false;
             }
         }
 
@@ -163,11 +287,14 @@ namespace FFTool
 
             string outputFile = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(selectedFilePath) + "." + format);
 
+            // 构建FFmpeg命令
+            string ffmpegArgs = BuildFFmpegArguments(selectedFilePath, outputFile);
+
             currentProcess = new Process();
             var process = currentProcess;
 
             process.StartInfo.FileName = "ffmpeg";
-            process.StartInfo.Arguments = $"-i \"{selectedFilePath}\" \"{outputFile}\"";
+            process.StartInfo.Arguments = ffmpegArgs;
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.CreateNoWindow = true;
@@ -208,6 +335,108 @@ namespace FFTool
             }
         }
 
+        private string BuildFFmpegArguments(string inputFile, string outputFile)
+        {
+            var args = new StringBuilder();
+            args.Append($"-i \"{inputFile}\"");
+
+            // 获取当前选择的媒体类型
+            var selectedMediaType = MediaTypeListBox.SelectedItem as MediaTypeItem;
+
+            if (selectedMediaType?.Name == "视频")
+            {
+                // 硬件加速设置
+                bool useNvidiaAcceleration = NvidiaAccelerationCheckBox.IsChecked == true && isNvidiaAvailable;
+
+                if (useNvidiaAcceleration)
+                {
+                    // 添加硬件解码
+                    args.Insert(0, "-hwaccel cuda -hwaccel_output_format cuda ");
+
+                    // 获取输出格式
+                    string outputFormat = Path.GetExtension(outputFile).ToLower();
+
+                    // 根据输出格式选择合适的英伟达编码器
+                    switch (outputFormat)
+                    {
+                        case ".mp4":
+                        case ".mkv":
+                        case ".avi":
+                            args.Append(" -c:v h264_nvenc");
+                            break;
+                        case ".webm":
+                            // WebM格式，如果支持VP9硬件编码则使用，否则回退到软件编码
+                            args.Append(" -c:v libvpx-vp9");
+                            break;
+                        default:
+                            args.Append(" -c:v h264_nvenc");
+                            break;
+                    }
+
+                    // 英伟达编码器特定参数
+                    args.Append(" -preset fast");
+                    args.Append(" -rc vbr");
+                }
+                else
+                {
+                    // 软件编码
+                    args.Append(" -c:v libx264");
+                }
+
+                // 码率设置
+                int bitrate = (int)BitrateSlider.Value;
+                if (useNvidiaAcceleration)
+                {
+                    args.Append($" -b:v {bitrate}k -maxrate {bitrate * 2}k -bufsize {bitrate * 2}k");
+                }
+                else
+                {
+                    args.Append($" -b:v {bitrate}k");
+                }
+
+                // 帧率设置
+                int framerate = (int)FramerateSlider.Value;
+                args.Append($" -r {framerate}");
+
+                // 视频翻转设置
+                var videoFilters = new List<string>();
+
+                if (HorizontalFlipCheckBox.IsChecked == true)
+                {
+                    videoFilters.Add("hflip");
+                }
+
+                if (VerticalFlipCheckBox.IsChecked == true)
+                {
+                    videoFilters.Add("vflip");
+                }
+
+                if (videoFilters.Count > 0)
+                {
+                    if (useNvidiaAcceleration)
+                    {
+                        // 硬件加速时需要在GPU上进行滤镜处理
+                        args.Append($" -vf \"hwdownload,format=nv12,{string.Join(",", videoFilters)},hwupload\"");
+                    }
+                    else
+                    {
+                        args.Append($" -vf \"{string.Join(",", videoFilters)}\"");
+                    }
+                }
+
+                // 音频编码设置
+                args.Append(" -c:a aac");
+            }
+            else if (selectedMediaType?.Name == "音频")
+            {
+                // 音频转换不需要硬件加速
+                args.Append(" -c:a libmp3lame");
+            }
+
+            args.Append($" \"{outputFile}\"");
+            return args.ToString();
+        }
+
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             if (currentProcess != null && !currentProcess.HasExited)
@@ -220,7 +449,13 @@ namespace FFTool
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("无法中止进程: " + ex.Message);
+                    string errorMessage = "转换失败: " + ex.Message;
+                    if (NvidiaAccelerationCheckBox.IsChecked == true && ex.Message.Contains("cuda"))
+                    {
+                        errorMessage += "\n\n建议：尝试取消英伟达硬件加速选项后重试。";
+                    }
+                    MessageBox.Show(errorMessage);
+                    StatusText.Text = "❌ 转换失败";
                 }
             }
             else

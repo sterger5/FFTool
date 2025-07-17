@@ -104,43 +104,153 @@
 
 		<!-- 现代化ComboBox样式 -->
 		<Style x:Key="ModernComboBox" TargetType="ComboBox">
-			<Setter Property="Background" Value="#ffffff"/>
-			<Setter Property="Foreground" Value="#212529"/>
-			<Setter Property="BorderBrush" Value="#ced4da"/>
-			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="Padding" Value="8,6"/>
-			<Setter Property="Margin" Value="0,0,0,8"/>
+    <Setter Property="Background" Value="#ffffff"/>
+    <Setter Property="Foreground" Value="#212529"/>
+    <Setter Property="BorderBrush" Value="#ced4da"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="8,6"/>
+    <Setter Property="Margin" Value="0,0,0,8"/>
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="ComboBox">
+                <Grid>
+                    <ToggleButton x:Name="ToggleButton"
+                                 BorderBrush="{TemplateBinding BorderBrush}"
+                                 BorderThickness="{TemplateBinding BorderThickness}"
+                                 Background="{TemplateBinding Background}"
+                                 IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Border x:Name="border" CornerRadius="4" 
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}" 
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="20"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ContentPresenter Grid.Column="0" 
+                                                        Margin="8,6"
+                                                        Content="{Binding SelectedItem.Content, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                        VerticalAlignment="Center"/>
+                                        <Path Grid.Column="1" 
+                                              Data="M 0 0 L 4 4 L 8 0 Z" 
+                                              Fill="#6c757d"
+                                              HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="border" Property="BorderBrush" Value="#007bff"/>
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="border" Property="BorderBrush" Value="#007bff"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
+                    <Popup x:Name="PART_Popup"
+                           AllowsTransparency="True"
+                           IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                           Placement="Bottom"
+                           PopupAnimation="Slide">
+                        <Border x:Name="DropDownBorder"
+                                Background="#ffffff"
+                                BorderBrush="#ced4da"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                MinWidth="{Binding ActualWidth, ElementName=ToggleButton}">
+                            <ScrollViewer SnapsToDevicePixels="True">
+                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                            </ScrollViewer>
+                        </Border>
+                    </Popup>
+                </Grid>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
+
+		<!-- 现代化滑块样式 -->
+		<Style x:Key="ModernSlider" TargetType="Slider">
+			<Setter Property="Background" Value="#e9ecef"/>
+			<Setter Property="Foreground" Value="#007bff"/>
+			<Setter Property="Height" Value="6"/>
 			<Setter Property="Template">
 				<Setter.Value>
-					<ControlTemplate TargetType="ComboBox">
+					<ControlTemplate TargetType="Slider">
 						<Grid>
-							<Border x:Name="border" CornerRadius="4" Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-								<Grid>
-									<Grid.ColumnDefinitions>
-										<ColumnDefinition Width="*"/>
-										<ColumnDefinition Width="20"/>
-									</Grid.ColumnDefinitions>
-									<ContentPresenter Grid.Column="0" Margin="8,6" VerticalAlignment="Center"/>
-									<Path Grid.Column="1" Data="M 0 0 L 4 4 L 8 0 Z" Fill="#6c757d"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
-								</Grid>
+							<Border x:Name="TrackBackground" Background="{TemplateBinding Background}" CornerRadius="3" Height="6"/>
+							<Track x:Name="PART_Track">
+								<Track.DecreaseRepeatButton>
+									<RepeatButton Command="Slider.DecreaseLarge" Style="{x:Null}">
+										<RepeatButton.Template>
+											<ControlTemplate>
+												<Border Background="{TemplateBinding Foreground}" CornerRadius="3" Height="6"/>
+											</ControlTemplate>
+										</RepeatButton.Template>
+									</RepeatButton>
+								</Track.DecreaseRepeatButton>
+								<Track.Thumb>
+									<Thumb>
+										<Thumb.Template>
+											<ControlTemplate>
+												<Ellipse Fill="#007bff" Width="16" Height="16" Stroke="#ffffff" StrokeThickness="2"/>
+											</ControlTemplate>
+										</Thumb.Template>
+									</Thumb>
+								</Track.Thumb>
+								<Track.IncreaseRepeatButton>
+									<RepeatButton Command="Slider.IncreaseLarge" Style="{x:Null}">
+										<RepeatButton.Template>
+											<ControlTemplate>
+												<Border Background="Transparent"/>
+											</ControlTemplate>
+										</RepeatButton.Template>
+									</RepeatButton>
+								</Track.IncreaseRepeatButton>
+							</Track>
+						</Grid>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+		<!-- 现代化复选框样式 -->
+		<Style x:Key="ModernCheckBox" TargetType="CheckBox">
+			<Setter Property="Foreground" Value="#212529"/>
+			<Setter Property="Background" Value="#ffffff"/>
+			<Setter Property="BorderBrush" Value="#ced4da"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Padding" Value="8,0,0,0"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="CheckBox">
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="20"/>
+								<ColumnDefinition Width="*"/>
+							</Grid.ColumnDefinitions>
+							<Border x:Name="checkBorder" Grid.Column="0" CornerRadius="3" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                    Width="16" Height="16">
+								<Path x:Name="checkMark" Data="M 3 6 L 6 9 L 13 2" Stroke="#ffffff" StrokeThickness="2"
+                                      Visibility="Collapsed"/>
 							</Border>
-							<Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}">
-								<Border Background="#ffffff" BorderBrush="#ced4da" BorderThickness="1" CornerRadius="4">
-									<ScrollViewer>
-										<ItemsPresenter/>
-									</ScrollViewer>
-								</Border>
-							</Popup>
+							<ContentPresenter Grid.Column="1" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
 						</Grid>
 						<ControlTemplate.Triggers>
-							<Trigger Property="IsMouseOver" Value="True">
-								<Setter TargetName="border" Property="BorderBrush" Value="#007bff"/>
+							<Trigger Property="IsChecked" Value="True">
+								<Setter TargetName="checkBorder" Property="Background" Value="#007bff"/>
+								<Setter TargetName="checkBorder" Property="BorderBrush" Value="#007bff"/>
+								<Setter TargetName="checkMark" Property="Visibility" Value="Visible"/>
 							</Trigger>
-							<Trigger Property="IsFocused" Value="True">
-								<Setter TargetName="border" Property="BorderBrush" Value="#007bff"/>
-								<Setter TargetName="border" Property="BorderThickness" Value="2"/>
+							<Trigger Property="IsMouseOver" Value="True">
+								<Setter TargetName="checkBorder" Property="BorderBrush" Value="#007bff"/>
 							</Trigger>
 						</ControlTemplate.Triggers>
 					</ControlTemplate>
@@ -274,7 +384,7 @@
 
 			<!-- 主要操作区域 -->
 			<ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-				<StackPanel Margin="32,24,32,32" MaxWidth="600" HorizontalAlignment="Left">
+				<StackPanel Margin="32,24,32,32" MaxWidth="800" HorizontalAlignment="Left">
 
 					<!-- 文件选择区域 -->
 					<Border Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="8" Padding="24" Margin="0,0,0,16">
@@ -333,6 +443,104 @@
 									<TextBlock Text="目标格式：" VerticalAlignment="Center" Foreground="#6c757d" Margin="0,0,12,0"/>
 									<ComboBox x:Name="FormatBox" Style="{StaticResource ModernComboBox}" Width="120" Margin="0,0,0,8"/>
 								</StackPanel>
+							</Grid>
+						</StackPanel>
+					</Border>
+
+					<!-- 视频参数设置区域 -->
+					<Border x:Name="VideoParametersPanel" Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="8" Padding="24" Margin="0,0,0,16" Visibility="Visible">
+						<StackPanel>
+							<TextBlock Text="🎥 视频参数设置" FontSize="16" FontWeight="Medium" Foreground="#212529" Margin="0,0,0,16"/>
+
+							<!-- 码率设置 -->
+							<Grid Margin="0,0,0,20">
+								<Grid.RowDefinitions>
+									<RowDefinition Height="Auto"/>
+									<RowDefinition Height="Auto"/>
+									<RowDefinition Height="Auto"/>
+								</Grid.RowDefinitions>
+
+								<TextBlock Grid.Row="0" Text="码率 (Kbps)" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+
+								<Grid Grid.Row="1">
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*"/>
+										<ColumnDefinition Width="100"/>
+									</Grid.ColumnDefinitions>
+
+									<Slider x:Name="BitrateSlider" Grid.Column="0"
+									        Style="{StaticResource ModernSlider}"
+									        Minimum="100" Maximum="50000" Value="2000"
+									        TickFrequency="100"
+									        ValueChanged="BitrateSlider_ValueChanged"
+									        Margin="0,0,12,0"/>
+
+									<TextBox x:Name="BitrateTextBox" Grid.Column="1"
+									         Style="{StaticResource ModernTextBox}"
+									         Text="2000"
+									         TextChanged="BitrateTextBox_TextChanged"
+									         Margin="0,0,0,8"/>
+								</Grid>
+
+								<TextBlock Grid.Row="2" Text="建议：720p使用2000-5000，1080p使用5000-15000" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
+							</Grid>
+
+							<!-- 帧率设置 -->
+							<Grid Margin="0,0,0,20">
+								<Grid.RowDefinitions>
+									<RowDefinition Height="Auto"/>
+									<RowDefinition Height="Auto"/>
+									<RowDefinition Height="Auto"/>
+								</Grid.RowDefinitions>
+
+								<TextBlock Grid.Row="0" Text="帧率 (FPS)" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+
+								<Grid Grid.Row="1">
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*"/>
+										<ColumnDefinition Width="100"/>
+									</Grid.ColumnDefinitions>
+
+									<Slider x:Name="FramerateSlider" Grid.Column="0"
+									        Style="{StaticResource ModernSlider}"
+									        Minimum="1" Maximum="120" Value="30"
+									        TickFrequency="1"
+									        ValueChanged="FramerateSlider_ValueChanged"
+									        Margin="0,0,12,0"/>
+
+									<TextBox x:Name="FramerateTextBox" Grid.Column="1"
+									         Style="{StaticResource ModernTextBox}"
+									         Text="30"
+									         TextChanged="FramerateTextBox_TextChanged"
+									         Margin="0,0,0,8"/>
+								</Grid>
+
+								<TextBlock Grid.Row="2" Text="常用：24fps电影，30fps普通视频，60fps游戏录制" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
+							</Grid>
+
+							<!-- 硬件加速选项 -->
+							<TextBlock Text="硬件加速" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+							<CheckBox x:Name="NvidiaAccelerationCheckBox"
+									  Style="{StaticResource ModernCheckBox}"
+									  Content="启用英伟达硬件加速 (需要支持的显卡)"
+									  Margin="0,0,0,16"/>
+							
+							<!-- 视频翻转选项 -->
+							<TextBlock Text="视频翻转" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+							<Grid Margin="0,0,0,16">
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="*"/>
+									<ColumnDefinition Width="*"/>
+								</Grid.ColumnDefinitions>
+
+								<CheckBox x:Name="HorizontalFlipCheckBox" Grid.Column="0"
+								          Style="{StaticResource ModernCheckBox}"
+								          Content="水平翻转（左右颠倒）"
+								          Margin="0,0,16,0"/>
+
+								<CheckBox x:Name="VerticalFlipCheckBox" Grid.Column="1"
+								          Style="{StaticResource ModernCheckBox}"
+								          Content="垂直翻转（上下颠倒）"/>
 							</Grid>
 						</StackPanel>
 					</Border>
