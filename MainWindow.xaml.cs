@@ -247,6 +247,16 @@ namespace FFTool
                 selectedFilePath = openFileDialog.FileName;
                 FilePathBox.Text = selectedFilePath;
                 StatusText.Text = "文件已选择";
+
+                // 自动分析码率
+                int recommendedBitrate = AnalyzeVideoBitrate(selectedFilePath);
+                BitrateTextBox.Text = recommendedBitrate.ToString();
+                BitrateSlider.Value = recommendedBitrate;
+
+                // 自动分析帧率
+                int recommendedFramerate = AnalyzeVideoFramerate(selectedFilePath);
+                FramerateTextBox.Text = recommendedFramerate.ToString();
+                FramerateSlider.Value = recommendedFramerate;
             }
         }
 
@@ -266,7 +276,7 @@ namespace FFTool
             }
         }
 
-        private void Convert_Click(object sender, RoutedEventArgs e)
+        private async void Convert_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrEmpty(selectedFilePath) || FormatBox.SelectedItem is not ComboBoxItem selectedItem)
             {
@@ -285,54 +295,67 @@ namespace FFTool
                 ? Path.GetDirectoryName(selectedFilePath)!
                 : selectedOutputPath;
 
-            string outputFile = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(selectedFilePath) + "." + format);
+            string inputExt = Path.GetExtension(selectedFilePath).TrimStart('.').ToLower();
+            string outputExt = format.ToLower();
 
-            // 构建FFmpeg命令
+            string outputFileName = Path.GetFileNameWithoutExtension(selectedFilePath);
+
+            // 如果原格式和目标格式相同，自动加后缀
+            if (inputExt == outputExt)
+            {
+                outputFileName += "_converted";
+            }
+
+            string outputFile = Path.Combine(outputDir, outputFileName + "." + format);
+
             string ffmpegArgs = BuildFFmpegArguments(selectedFilePath, outputFile);
 
-            currentProcess = new Process();
-            var process = currentProcess;
+            StatusText.Text = "🔄 正在转换...";
+            ProgressBar.Value = 0;
 
-            process.StartInfo.FileName = "ffmpeg";
-            process.StartInfo.Arguments = ffmpegArgs;
-            process.StartInfo.UseShellExecute = false;
-            process.StartInfo.RedirectStandardError = true;
-            process.StartInfo.CreateNoWindow = true;
-
-            process.ErrorDataReceived += (s, e) =>
+            await Task.Run(() =>
             {
-                if (e.Data != null && e.Data.Contains("time="))
+                try
+                {
+                    using var process = new Process();
+                    process.StartInfo.FileName = "ffmpeg";
+                    process.StartInfo.Arguments = ffmpegArgs;
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.RedirectStandardError = true;
+                    process.StartInfo.CreateNoWindow = true;
+
+                    process.Start();
+
+                    string? line;
+                    while ((line = process.StandardError.ReadLine()) != null)
+                    {
+                        if (line.Contains("time="))
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                ProgressBar.Value += 2;
+                                if (ProgressBar.Value > 100) ProgressBar.Value = 100;
+                            });
+                        }
+                    }
+
+                    process.WaitForExit();
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        StatusText.Text = "✅ 转换完成";
+                        ProgressBar.Value = 100;
+                    });
+                }
+                catch (Exception ex)
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        // 模拟进度
-                        ProgressBar.Value += 2;
-                        if (ProgressBar.Value > 100) ProgressBar.Value = 100;
+                        MessageBox.Show("转换失败: " + ex.Message);
+                        StatusText.Text = "❌ 转换失败";
                     });
                 }
-            };
-
-            process.Exited += (s, e) =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    StatusText.Text = "✅ 转换完成";
-                    ProgressBar.Value = 100;
-                });
-            };
-
-            try
-            {
-                process.Start();
-                process.BeginErrorReadLine();
-                StatusText.Text = "🔄 正在转换...";
-                ProgressBar.Value = 0;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("转换失败: " + ex.Message);
-                StatusText.Text = "❌ 转换失败";
-            }
+            });
         }
 
         private string BuildFFmpegArguments(string inputFile, string outputFile)
@@ -480,8 +503,82 @@ namespace FFTool
                     selectedFilePath = files[0];
                     FilePathBox.Text = selectedFilePath;
                     StatusText.Text = "文件已选择";
+
+                    // 自动分析码率
+                    int recommendedBitrate = AnalyzeVideoBitrate(selectedFilePath);
+                    BitrateTextBox.Text = recommendedBitrate.ToString();
+                    BitrateSlider.Value = recommendedBitrate;
+
+                    // 自动分析帧率
+                    int recommendedFramerate = AnalyzeVideoFramerate(selectedFilePath);
+                    FramerateTextBox.Text = recommendedFramerate.ToString();
+                    FramerateSlider.Value = recommendedFramerate;
                 }
             }
+        }
+
+        private int AnalyzeVideoBitrate(string filePath)
+        {
+            try
+            {
+                var process = new Process();
+                process.StartInfo.FileName = "ffmpeg";
+                process.StartInfo.Arguments = $"-i \"{filePath}\"";
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardError = true;
+                process.StartInfo.CreateNoWindow = true;
+
+                process.Start();
+                string ffmpegOutput = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                // 解析 "bitrate: XXXX kb/s"
+                var match = System.Text.RegularExpressions.Regex.Match(ffmpegOutput, @"bitrate:\s*(\d+)\s*kb/s");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int bitrate))
+                {
+                    // 限制在滑块范围内
+                    bitrate = Math.Max((int)BitrateSlider.Minimum, Math.Min((int)BitrateSlider.Maximum, bitrate));
+                    return bitrate;
+                }
+            }
+            catch { }
+            return 2000; // 默认值
+        }
+
+        private int AnalyzeVideoFramerate(string filePath)
+        {
+            try
+            {
+                var process = new Process();
+                process.StartInfo.FileName = "ffmpeg";
+                process.StartInfo.Arguments = $"-i \"{filePath}\"";
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardError = true;
+                process.StartInfo.CreateNoWindow = true;
+
+                process.Start();
+                string ffmpegOutput = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                // 解析 "fps" 或 "tbr"
+                var match = System.Text.RegularExpressions.Regex.Match(ffmpegOutput, @"(\d+(?:\.\d+)?)\s*fps");
+                if (match.Success && double.TryParse(match.Groups[1].Value, out double fps))
+                {
+                    int framerate = (int)Math.Round(fps);
+                    framerate = Math.Max((int)FramerateSlider.Minimum, Math.Min((int)FramerateSlider.Maximum, framerate));
+                    return framerate;
+                }
+                // 兼容 tbr 字段
+                match = System.Text.RegularExpressions.Regex.Match(ffmpegOutput, @"(\d+(?:\.\d+)?)\s*tbr");
+                if (match.Success && double.TryParse(match.Groups[1].Value, out double tbr))
+                {
+                    int framerate = (int)Math.Round(tbr);
+                    framerate = Math.Max((int)FramerateSlider.Minimum, Math.Min((int)FramerateSlider.Maximum, framerate));
+                    return framerate;
+                }
+            }
+            catch { }
+            return 30; // 默认值
         }
     }
 }

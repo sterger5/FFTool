@@ -470,7 +470,7 @@
 
 									<Slider x:Name="BitrateSlider" Grid.Column="0"
 									        Style="{StaticResource ModernSlider}"
-									        Minimum="100" Maximum="50000" Value="2000"
+									        Minimum="100" Maximum="187500" Value="2000"
 									        TickFrequency="100"
 									        ValueChanged="BitrateSlider_ValueChanged"
 									        Margin="0,0,12,0"/>
