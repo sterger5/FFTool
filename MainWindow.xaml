@@ -278,12 +278,12 @@
 								<Setter TargetName="border" Property="Background" Value="#e9ecef"/>
 							</Trigger>
 							<MultiTrigger>
-								<MultiTrigger.Conditions>
-									<Condition Property="IsSelected" Value="True"/>
-									<Condition Property="IsMouseOver" Value="True"/>
-								</MultiTrigger.Conditions>
-								<Setter TargetName="border" Property="Background" Value="#0056b3"/>
-							</MultiTrigger>
+<MultiTrigger.Conditions>
+<Condition Property="IsSelected" Value="True"/>
+<Condition Property="IsMouseOver" Value="True"/>
+</MultiTrigger.Conditions>
+<Setter TargetName="border" Property="Background" Value="#0056b3"/>
+</MultiTrigger>
 						</ControlTemplate.Triggers>
 					</ControlTemplate>
 				</Setter.Value>
@@ -388,7 +388,7 @@
 
 			<!-- 主要操作区域 -->
 			<ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-				<StackPanel Margin="32,24,32,32" MaxWidth="800" HorizontalAlignment="Left">
+				<StackPanel Margin="32,24,32,32" MaxWidth="1200" HorizontalAlignment="Left">
 
 					<!-- 文件选择区域 -->
 					<Border Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="8" Padding="24" Margin="0,0,0,16">
@@ -451,104 +451,6 @@
 						</StackPanel>
 					</Border>
 
-					<!-- 视频参数设置区域 -->
-					<Border x:Name="VideoParametersPanel" Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="8" Padding="24" Margin="0,0,0,16" Visibility="Visible">
-						<StackPanel>
-							<TextBlock Text="🎥 视频参数设置" FontSize="16" FontWeight="Medium" Foreground="#212529" Margin="0,0,0,16"/>
-
-							<!-- 码率设置 -->
-							<Grid Margin="0,0,0,20">
-								<Grid.RowDefinitions>
-									<RowDefinition Height="Auto"/>
-									<RowDefinition Height="Auto"/>
-									<RowDefinition Height="Auto"/>
-								</Grid.RowDefinitions>
-
-								<TextBlock Grid.Row="0" Text="码率 (Kbps)" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
-
-								<Grid Grid.Row="1">
-									<Grid.ColumnDefinitions>
-										<ColumnDefinition Width="*"/>
-										<ColumnDefinition Width="100"/>
-									</Grid.ColumnDefinitions>
-
-									<Slider x:Name="BitrateSlider" Grid.Column="0"
-									        Style="{StaticResource ModernSlider}"
-									        Minimum="100" Maximum="187500" Value="2000"
-									        TickFrequency="100"
-									        ValueChanged="BitrateSlider_ValueChanged"
-									        Margin="0,0,12,0"/>
-
-									<TextBox x:Name="BitrateTextBox" Grid.Column="1"
-									         Style="{StaticResource ModernTextBox}"
-									         Text="2000"
-									         TextChanged="BitrateTextBox_TextChanged"
-									         Margin="0,0,0,8"/>
-								</Grid>
-
-								<TextBlock Grid.Row="2" Text="建议：720p使用2000-5000，1080p使用5000-15000" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
-							</Grid>
-
-							<!-- 帧率设置 -->
-							<Grid Margin="0,0,0,20">
-								<Grid.RowDefinitions>
-									<RowDefinition Height="Auto"/>
-									<RowDefinition Height="Auto"/>
-									<RowDefinition Height="Auto"/>
-								</Grid.RowDefinitions>
-
-								<TextBlock Grid.Row="0" Text="帧率 (FPS)" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
-
-								<Grid Grid.Row="1">
-									<Grid.ColumnDefinitions>
-										<ColumnDefinition Width="*"/>
-										<ColumnDefinition Width="100"/>
-									</Grid.ColumnDefinitions>
-
-									<Slider x:Name="FramerateSlider" Grid.Column="0"
-									        Style="{StaticResource ModernSlider}"
-									        Minimum="1" Maximum="120" Value="30"
-									        TickFrequency="1"
-									        ValueChanged="FramerateSlider_ValueChanged"
-									        Margin="0,0,12,0"/>
-
-									<TextBox x:Name="FramerateTextBox" Grid.Column="1"
-									         Style="{StaticResource ModernTextBox}"
-									         Text="30"
-									         TextChanged="FramerateTextBox_TextChanged"
-									         Margin="0,0,0,8"/>
-								</Grid>
-
-								<TextBlock Grid.Row="2" Text="常用：24fps电影，30fps普通视频，60fps游戏录制" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
-							</Grid>
-
-							<!-- 硬件加速选项 -->
-							<TextBlock Text="硬件加速" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
-							<CheckBox x:Name="NvidiaAccelerationCheckBox"
-									  Style="{StaticResource ModernCheckBox}"
-									  Content="启用英伟达硬件加速 (需要支持的显卡)"
-									  Margin="0,0,0,16"/>
-							
-							<!-- 视频翻转选项 -->
-							<TextBlock Text="视频翻转" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
-							<Grid Margin="0,0,0,16">
-								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="*"/>
-									<ColumnDefinition Width="*"/>
-								</Grid.ColumnDefinitions>
-
-								<CheckBox x:Name="HorizontalFlipCheckBox" Grid.Column="0"
-								          Style="{StaticResource ModernCheckBox}"
-								          Content="水平翻转（左右颠倒）"
-								          Margin="0,0,16,0"/>
-
-								<CheckBox x:Name="VerticalFlipCheckBox" Grid.Column="1"
-								          Style="{StaticResource ModernCheckBox}"
-								          Content="垂直翻转（上下颠倒）"/>
-							</Grid>
-						</StackPanel>
-					</Border>
-
 					<!-- 操作按钮区域 -->
 					<Border Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="8" Padding="24" Margin="0,0,0,16">
 						<StackPanel>
@@ -581,11 +483,115 @@
                                          Minimum="0" Maximum="100" Value="0"/>
 						</StackPanel>
 					</Border>
-					
-					<!-- 字幕功能区域 -->
-					<Border Grid.Row="1" Grid.Column="1" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="1,0,0,0">
-						<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-							<StackPanel Margin="24,24,24,32">
+
+					<!-- 视频参数和字幕设置并排显示 -->
+					<Grid x:Name="VideoAndSubtitlePanel" Visibility="Collapsed">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="2*"/>
+							<ColumnDefinition Width="1.5*"/>
+						</Grid.ColumnDefinitions>
+
+						<!-- 视频参数设置区域 -->
+						<Border x:Name="VideoParametersPanel" Grid.Column="0" Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="8" Padding="24" Margin="0,0,16,0">
+							<StackPanel>
+								<TextBlock Text="🎥 视频参数设置" FontSize="16" FontWeight="Medium" Foreground="#212529" Margin="0,0,0,16"/>
+
+								<!-- 码率设置 -->
+								<Grid Margin="0,0,0,20">
+									<Grid.RowDefinitions>
+										<RowDefinition Height="Auto"/>
+										<RowDefinition Height="Auto"/>
+										<RowDefinition Height="Auto"/>
+									</Grid.RowDefinitions>
+
+									<TextBlock Grid.Row="0" Text="码率 (Kbps)" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+
+									<Grid Grid.Row="1">
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition Width="*"/>
+											<ColumnDefinition Width="100"/>
+										</Grid.ColumnDefinitions>
+
+										<Slider x:Name="BitrateSlider" Grid.Column="0"
+									        Style="{StaticResource ModernSlider}"
+									        Minimum="100" Maximum="187500" Value="2000"
+									        TickFrequency="100"
+									        ValueChanged="BitrateSlider_ValueChanged"
+									        Margin="0,0,12,0"/>
+
+										<TextBox x:Name="BitrateTextBox" Grid.Column="1"
+									         Style="{StaticResource ModernTextBox}"
+									         Text="2000"
+									         TextChanged="BitrateTextBox_TextChanged"
+									         Margin="0,0,0,8"/>
+									</Grid>
+
+									<TextBlock Grid.Row="2" Text="建议：720p使用2000-5000，1080p使用5000-15000" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
+								</Grid>
+
+								<!-- 帧率设置 -->
+								<Grid Margin="0,0,0,20">
+									<Grid.RowDefinitions>
+										<RowDefinition Height="Auto"/>
+										<RowDefinition Height="Auto"/>
+										<RowDefinition Height="Auto"/>
+									</Grid.RowDefinitions>
+
+									<TextBlock Grid.Row="0" Text="帧率 (FPS)" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+
+									<Grid Grid.Row="1">
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition Width="*"/>
+											<ColumnDefinition Width="100"/>
+										</Grid.ColumnDefinitions>
+
+										<Slider x:Name="FramerateSlider" Grid.Column="0"
+									        Style="{StaticResource ModernSlider}"
+									        Minimum="1" Maximum="120" Value="30"
+									        TickFrequency="1"
+									        ValueChanged="FramerateSlider_ValueChanged"
+									        Margin="0,0,12,0"/>
+
+										<TextBox x:Name="FramerateTextBox" Grid.Column="1"
+									         Style="{StaticResource ModernTextBox}"
+									         Text="30"
+									         TextChanged="FramerateTextBox_TextChanged"
+									         Margin="0,0,0,8"/>
+									</Grid>
+
+									<TextBlock Grid.Row="2" Text="常用：24fps电影，30fps普通视频，60fps游戏录制" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
+								</Grid>
+
+								<!-- 硬件加速选项 -->
+								<TextBlock Text="硬件加速" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+								<CheckBox x:Name="NvidiaAccelerationCheckBox"
+									  Style="{StaticResource ModernCheckBox}"
+									  Content="启用英伟达硬件加速 (需要支持的显卡)"
+									  Margin="0,0,0,16"/>
+							
+								<!-- 视频翻转选项 -->
+								<TextBlock Text="视频翻转" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+								<Grid Margin="0,0,0,16">
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*"/>
+										<ColumnDefinition Width="*"/>
+									</Grid.ColumnDefinitions>
+
+									<CheckBox x:Name="HorizontalFlipCheckBox" Grid.Column="0"
+								          Style="{StaticResource ModernCheckBox}"
+								          Content="水平翻转（左右颠倒）"
+								          Margin="0,0,16,0"/>
+
+									<CheckBox x:Name="VerticalFlipCheckBox" Grid.Column="1"
+								          Style="{StaticResource ModernCheckBox}"
+								          Content="垂直翻转（上下颠倒）"/>
+								</Grid>
+							</StackPanel>
+						</Border>
+
+						<!-- 字幕设置区域 -->
+						<Border x:Name="SubtitlePanel" Grid.Column="1" Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="8" Padding="24">
+							<StackPanel>
 								<TextBlock Text="🎬 字幕设置" FontSize="16" FontWeight="Medium" Foreground="#212529" Margin="0,0,0,16"/>
 
 								<!-- 字幕文件选择 -->
@@ -612,10 +618,8 @@
 													Width="60"/>
 										</StackPanel>
 
-										<TextBlock Text="支持格式：SRT、ASS、SSA、VTT"
-												   FontSize="12" Foreground="#6c757d" Margin="0,8,0,0"/>
-										<TextBlock Text="字幕将烧录到视频中"
-												   FontSize="12" Foreground="#6c757d" Margin="0,2,0,0"/>
+										<TextBlock Text="支持格式：SRT、ASS、SSA、VTT，字幕将烧录到视频中"
+												   FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
 									</StackPanel>
 								</Border>
 
@@ -625,43 +629,40 @@
 										<TextBlock Text="字幕样式" FontSize="14" Foreground="#6c757d" Margin="0,0,0,12"/>
 
 										<Grid Margin="0,0,0,12">
-											<Grid.RowDefinitions>
-												<RowDefinition Height="Auto"/>
-												<RowDefinition Height="Auto"/>
-											</Grid.RowDefinitions>
+											<Grid.ColumnDefinitions>
+												<ColumnDefinition Width="*"/>
+												<ColumnDefinition Width="*"/>
+											</Grid.ColumnDefinitions>
 
-											<TextBlock Grid.Row="0" Text="字体大小" FontSize="12" Foreground="#6c757d" Margin="0,0,0,4"/>
-											<ComboBox x:Name="SubtitleFontSizeComboBox" Grid.Row="1" Style="{StaticResource ModernComboBox}">
-												<ComboBoxItem Content="16" IsSelected="True"/>
-												<ComboBoxItem Content="18"/>
-												<ComboBoxItem Content="20"/>
-												<ComboBoxItem Content="24"/>
-												<ComboBoxItem Content="28"/>
-												<ComboBoxItem Content="32"/>
-											</ComboBox>
-										</Grid>
+											<StackPanel Grid.Column="0" Margin="0,0,8,0">
+												<TextBlock Text="字体大小" FontSize="14" Foreground="#6c757d" Margin="0,0,0,4"/>
+												<ComboBox x:Name="SubtitleFontSizeComboBox" Style="{StaticResource ModernComboBox}">
+													<ComboBoxItem Content="16" IsSelected="True"/>
+													<ComboBoxItem Content="18"/>
+													<ComboBoxItem Content="20"/>
+													<ComboBoxItem Content="24"/>
+													<ComboBoxItem Content="28"/>
+													<ComboBoxItem Content="32"/>
+												</ComboBox>
+											</StackPanel>
 
-										<Grid>
-											<Grid.RowDefinitions>
-												<RowDefinition Height="Auto"/>
-												<RowDefinition Height="Auto"/>
-											</Grid.RowDefinitions>
-
-											<TextBlock Grid.Row="0" Text="字体颜色" FontSize="12" Foreground="#6c757d" Margin="0,0,0,4"/>
-											<ComboBox x:Name="SubtitleColorComboBox" Grid.Row="1" Style="{StaticResource ModernComboBox}">
-												<ComboBoxItem Content="白色" IsSelected="True"/>
-												<ComboBoxItem Content="黄色"/>
-												<ComboBoxItem Content="红色"/>
-												<ComboBoxItem Content="绿色"/>
-												<ComboBoxItem Content="蓝色"/>
-												<ComboBoxItem Content="黑色"/>
-											</ComboBox>
+											<StackPanel Grid.Column="1" Margin="8,0,0,0">
+												<TextBlock Text="字体颜色" FontSize="14" Foreground="#6c757d" Margin="0,0,0,4"/>
+												<ComboBox x:Name="SubtitleColorComboBox" Style="{StaticResource ModernComboBox}">
+													<ComboBoxItem Content="白色" IsSelected="True"/>
+													<ComboBoxItem Content="黄色"/>
+													<ComboBoxItem Content="红色"/>
+													<ComboBoxItem Content="绿色"/>
+													<ComboBoxItem Content="蓝色"/>
+													<ComboBoxItem Content="黑色"/>
+												</ComboBox>
+											</StackPanel>
 										</Grid>
 									</StackPanel>
 								</Border>
 							</StackPanel>
-						</ScrollViewer>
-					</Border>
+						</Border>
+					</Grid>
 				</StackPanel>
 			</ScrollViewer>
 		</Grid>

@@ -58,6 +58,9 @@ namespace FFTool
 
             // 设置默认状态文本
             StatusText.Text = "准备就绪";
+
+            // 由于默认选择视频类型，所以初始化时显示视频参数和字幕面板
+            VideoAndSubtitlePanel.Visibility = Visibility.Visible;
         }
 
         private void CheckNvidiaAcceleration()
@@ -103,9 +106,9 @@ namespace FFTool
                 selected.IsSelected = true;
                 UpdateFormatOptions(selected.Name);
 
-                // 显示或隐藏视频参数面板
-                VideoParametersPanel.Visibility = selected.Name == "视频"
-                    ? Visibility.Visible
+                // 只在视频类型下显示视频参数和字幕设置
+                VideoAndSubtitlePanel.Visibility = selected.Name == "视频" 
+                    ? Visibility.Visible 
                     : Visibility.Collapsed;
             }
         }
