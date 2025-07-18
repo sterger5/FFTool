@@ -373,6 +373,10 @@
 				<RowDefinition Height="60"/>
 				<RowDefinition Height="*"/>
 			</Grid.RowDefinitions>
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*"/>
+
+			</Grid.ColumnDefinitions>
 
 			<!-- 标题栏 -->
 			<Border Grid.Row="0" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="0,0,0,1">
@@ -576,6 +580,87 @@
 							<ProgressBar x:Name="ProgressBar" Style="{StaticResource ModernProgressBar}"
                                          Minimum="0" Maximum="100" Value="0"/>
 						</StackPanel>
+					</Border>
+					
+					<!-- 字幕功能区域 -->
+					<Border Grid.Row="1" Grid.Column="1" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="1,0,0,0">
+						<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+							<StackPanel Margin="24,24,24,32">
+								<TextBlock Text="🎬 字幕设置" FontSize="16" FontWeight="Medium" Foreground="#212529" Margin="0,0,0,16"/>
+
+								<!-- 字幕文件选择 -->
+								<Border Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,16">
+									<StackPanel>
+										<TextBlock Text="字幕文件" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+
+										<TextBox x:Name="SubtitlePathBox"
+												 Style="{StaticResource ModernTextBox}"
+												 IsReadOnly="True"
+												 Text="选择字幕文件（可选）"
+												 Margin="0,0,0,8"/>
+
+										<StackPanel Orientation="Horizontal">
+											<Button Content="选择字幕"
+													Style="{StaticResource ModernButton}"
+													Click="BrowseSubtitle_Click"
+													Width="80"
+													Margin="0,0,8,0"/>
+
+											<Button Content="清除"
+													Style="{StaticResource ModernButton}"
+													Click="ClearSubtitle_Click"
+													Width="60"/>
+										</StackPanel>
+
+										<TextBlock Text="支持格式：SRT、ASS、SSA、VTT"
+												   FontSize="12" Foreground="#6c757d" Margin="0,8,0,0"/>
+										<TextBlock Text="字幕将烧录到视频中"
+												   FontSize="12" Foreground="#6c757d" Margin="0,2,0,0"/>
+									</StackPanel>
+								</Border>
+
+								<!-- 字幕样式设置 -->
+								<Border Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="8" Padding="16">
+									<StackPanel>
+										<TextBlock Text="字幕样式" FontSize="14" Foreground="#6c757d" Margin="0,0,0,12"/>
+
+										<Grid Margin="0,0,0,12">
+											<Grid.RowDefinitions>
+												<RowDefinition Height="Auto"/>
+												<RowDefinition Height="Auto"/>
+											</Grid.RowDefinitions>
+
+											<TextBlock Grid.Row="0" Text="字体大小" FontSize="12" Foreground="#6c757d" Margin="0,0,0,4"/>
+											<ComboBox x:Name="SubtitleFontSizeComboBox" Grid.Row="1" Style="{StaticResource ModernComboBox}">
+												<ComboBoxItem Content="16" IsSelected="True"/>
+												<ComboBoxItem Content="18"/>
+												<ComboBoxItem Content="20"/>
+												<ComboBoxItem Content="24"/>
+												<ComboBoxItem Content="28"/>
+												<ComboBoxItem Content="32"/>
+											</ComboBox>
+										</Grid>
+
+										<Grid>
+											<Grid.RowDefinitions>
+												<RowDefinition Height="Auto"/>
+												<RowDefinition Height="Auto"/>
+											</Grid.RowDefinitions>
+
+											<TextBlock Grid.Row="0" Text="字体颜色" FontSize="12" Foreground="#6c757d" Margin="0,0,0,4"/>
+											<ComboBox x:Name="SubtitleColorComboBox" Grid.Row="1" Style="{StaticResource ModernComboBox}">
+												<ComboBoxItem Content="白色" IsSelected="True"/>
+												<ComboBoxItem Content="黄色"/>
+												<ComboBoxItem Content="红色"/>
+												<ComboBoxItem Content="绿色"/>
+												<ComboBoxItem Content="蓝色"/>
+												<ComboBoxItem Content="黑色"/>
+											</ComboBox>
+										</Grid>
+									</StackPanel>
+								</Border>
+							</StackPanel>
+						</ScrollViewer>
 					</Border>
 				</StackPanel>
 			</ScrollViewer>

@@ -20,6 +20,7 @@ namespace FFTool
         private Process? currentProcess = null;
         private bool isUpdatingSlider = false;
         private bool isUpdatingTextBox = false;
+        private string? selectedSubtitlePath = null;
 
         public ObservableCollection<MediaTypeItem> MediaTypes { get; set; }
 
@@ -434,15 +435,23 @@ namespace FFTool
                     videoFilters.Add("vflip");
                 }
 
+                // 字幕处理
+                if (!string.IsNullOrEmpty(selectedSubtitlePath))
+                {
+                    string subtitleFilter = $"subtitles='{selectedSubtitlePath.Replace("\\", "/").Replace("'", "\\'")}'";
+                    videoFilters.Add(subtitleFilter);
+                }
+
                 if (videoFilters.Count > 0)
                 {
-                    if (useNvidiaAcceleration)
+                    if (useNvidiaAcceleration && !videoFilters.Any(f => f.Contains("subtitles")))
                     {
-                        // 硬件加速时需要在GPU上进行滤镜处理
+                        // 硬件加速时需要在GPU上进行滤镜处理（字幕除外）
                         args.Append($" -vf \"hwdownload,format=nv12,{string.Join(",", videoFilters)},hwupload\"");
                     }
                     else
                     {
+                        // 有字幕时使用软件滤镜
                         args.Append($" -vf \"{string.Join(",", videoFilters)}\"");
                     }
                 }
@@ -579,6 +588,26 @@ namespace FFTool
             }
             catch { }
             return 30; // 默认值
+        }
+        private void BrowseSubtitle_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog openFileDialog = new();
+            openFileDialog.Filter = "字幕文件 (*.srt;*.ass;*.ssa;*.vtt)|*.srt;*.ass;*.ssa;*.vtt|所有文件 (*.*)|*.*";
+            openFileDialog.Title = "选择字幕文件";
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                selectedSubtitlePath = openFileDialog.FileName;
+                SubtitlePathBox.Text = selectedSubtitlePath;
+                StatusText.Text = "字幕文件已选择";
+            }
+        }
+
+        private void ClearSubtitle_Click(object sender, RoutedEventArgs e)
+        {
+            selectedSubtitlePath = null;
+            SubtitlePathBox.Text = "";
+            StatusText.Text = "字幕文件已清除";
         }
     }
 }
