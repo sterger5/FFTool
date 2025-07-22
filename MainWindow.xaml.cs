@@ -211,6 +211,45 @@ namespace FFTool
             }
         }
 
+        // 音量滑块值改变事件
+        private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (isUpdatingTextBox) return;
+
+            isUpdatingSlider = true;
+            if (VolumeTextBox != null)
+            {
+                VolumeTextBox.Text = ((int)e.NewValue).ToString();
+            }
+            isUpdatingSlider = false;
+        }
+
+        // 音量文本框改变事件
+        private void VolumeTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (isUpdatingSlider) return;
+
+            if (int.TryParse(VolumeTextBox.Text, out int value))
+            {
+                isUpdatingTextBox = true;
+                if (value >= VolumeSlider.Minimum && value <= VolumeSlider.Maximum)
+                {
+                    VolumeSlider.Value = value;
+                }
+                else if (value < VolumeSlider.Minimum)
+                {
+                    VolumeSlider.Value = VolumeSlider.Minimum;
+                    VolumeTextBox.Text = VolumeSlider.Minimum.ToString();
+                }
+                else if (value > VolumeSlider.Maximum)
+                {
+                    VolumeSlider.Value = VolumeSlider.Maximum;
+                    VolumeTextBox.Text = VolumeSlider.Maximum.ToString();
+                }
+                isUpdatingTextBox = false;
+            }
+        }
+
         public class MediaTypeItem : INotifyPropertyChanged
         {
             private string name = "";
@@ -461,6 +500,10 @@ namespace FFTool
 
                 // 音频编码设置
                 args.Append(" -c:a aac");
+
+                // 音量调节
+                double volume = VolumeSlider.Value / 100.0; // 转换为小数形式
+                args.Append($" -filter:a volume={volume:F2}");
             }
             else if (selectedMediaType?.Name == "音频")
             {
@@ -595,7 +638,7 @@ namespace FFTool
         private void BrowseSubtitle_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new();
-            openFileDialog.Filter = "字幕文件 (*.srt;*.ass;*.ssa;*.vtt)|*.srt;*.ass;*.ssa;*.vtt|所有文件 (*.*)|*.*";
+            openFileDialog.Filter = " 字幕文件 (*.srt;*.ass;*.ssa;*.vtt)|*.srt;*.ass;*.ssa;*.vtt|所有文件 (*.*)|*.*";
             openFileDialog.Title = "选择字幕文件";
 
             if (openFileDialog.ShowDialog() == true)
