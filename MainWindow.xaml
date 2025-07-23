@@ -485,7 +485,7 @@
 					</Border>
 
 					<!-- 视频参数和字幕设置并排显示 -->
-					<Grid x:Name="VideoAndSubtitlePanel" Visibility="Collapsed">
+					<Grid x:Name="VideoAndSubtitlePanel" Visibility="Collapsed" Margin="0,0,0,16">
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="2*"/>
 							<ColumnDefinition Width="1.5*"/>
@@ -695,6 +695,106 @@
 							</StackPanel>
 						</Border>
 					</Grid>
+					<!-- 音频参数设置区域 - 修改布局以支持换行 -->
+					<Border x:Name="AudioParametersPanel" Grid.Row="1" Grid.Column="1" Background="#ffffff" BorderBrush="#dee2e6" 
+        BorderThickness="1" CornerRadius="8" Padding="24" Margin="0,0,0,16" Visibility="Collapsed">
+    <StackPanel MaxWidth="800">
+        <TextBlock Text="🎵 音频参数设置" FontSize="16" FontWeight="Medium" Foreground="#212529" Margin="0,0,0,16"/>
+
+        <WrapPanel Orientation="Horizontal">
+            <!-- 音量调节 -->
+            <Border Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="4" 
+                    Padding="16" Margin="0,0,16,16" MinWidth="300">
+                <StackPanel>
+                    <TextBlock Text="音量调节" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="80"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Slider x:Name="AudioVolumeSlider" Grid.Column="0"
+                                Style="{StaticResource ModernSlider}"
+                                Minimum="0" Maximum="200" Value="100"
+                                TickFrequency="1"
+                                ValueChanged="AudioVolumeSlider_ValueChanged"
+                                Margin="0,0,12,0"/>
+
+                        <TextBox x:Name="AudioVolumeTextBox" Grid.Column="1"
+                                Style="{StaticResource ModernTextBox}"
+                                Text="100"
+                                TextChanged="AudioVolumeTextBox_TextChanged"/>
+                    </Grid>
+                    <TextBlock Text="默认100%，范围0-200%" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 音频比特率设置 -->
+            <Border Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="4" 
+                    Padding="16" Margin="0,0,16,16" MinWidth="300">
+                <StackPanel>
+                    <TextBlock Text="音频比特率" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="80"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Slider x:Name="AudioBitrateSlider" Grid.Column="0"
+                                Style="{StaticResource ModernSlider}"
+                                Minimum="64" Maximum="2048" Value="128"
+                                TickFrequency="8"
+                                ValueChanged="AudioBitrateSlider_ValueChanged"
+                                Margin="0,0,12,0"/>
+
+                        <TextBox x:Name="AudioBitrateTextBox" Grid.Column="1"
+                                Style="{StaticResource ModernTextBox}"
+                                Text="128"
+                                TextChanged="AudioBitrateTextBox_TextChanged"/>
+                    </Grid>
+                    <TextBlock Text="常用：128kbps普通质量，192kbps高质量" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 采样率设置 -->
+            <Border Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="4" 
+                    Padding="16" Margin="0,0,16,16" MinWidth="300">
+                <StackPanel>
+                    <TextBlock Text="采样率" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+                    <ComboBox x:Name="AudioSampleRateComboBox" 
+                            Style="{StaticResource ModernComboBox}" 
+                            MinWidth="200" 
+                            HorizontalAlignment="Left">
+                        <ComboBoxItem Content="22050" />
+                        <ComboBoxItem Content="44100" IsSelected="True"/>
+                        <ComboBoxItem Content="48000" />
+                        <ComboBoxItem Content="96000" />
+                        <ComboBoxItem Content="192000" />
+                        <ComboBoxItem Content="384000" />
+                    </ComboBox>
+                    <TextBlock Text="常用：44100Hz CD质量，48000Hz专业音频" 
+                             FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 音频选项 -->
+            <Border Background="#ffffff" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="4" 
+                    Padding="16" Margin="0,0,16,16" MinWidth="300">
+                <StackPanel>
+                    <TextBlock Text="音频选项" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+                    <CheckBox x:Name="MonoAudioCheckBox"
+                            Style="{StaticResource ModernCheckBox}"
+                            Content="转换为单声道"
+                            Margin="0,0,0,8"/>
+                    <CheckBox x:Name="NormalizeAudioCheckBox"
+                            Style="{StaticResource ModernCheckBox}"
+                            Content="音频标准化（自动调整音量到最佳电平）"
+                            Margin="0,0,0,4"/>
+                </StackPanel>
+            </Border>
+        </WrapPanel>
+    </StackPanel>
+</Border>
 				</StackPanel>
 			</ScrollViewer>
 		</Grid>

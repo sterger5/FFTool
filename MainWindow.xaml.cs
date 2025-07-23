@@ -21,6 +21,11 @@ namespace FFTool
         private bool isUpdatingSlider = false;
         private bool isUpdatingTextBox = false;
         private string? selectedSubtitlePath = null;
+        // 音频参数相关字段
+        private bool isUpdatingAudioVolumeSlider = false;
+        private bool isUpdatingAudioVolumeTextBox = false;
+        private bool isUpdatingAudioBitrateSlider = false;
+        private bool isUpdatingAudioBitrateTextBox = false;
 
         public ObservableCollection<MediaTypeItem> MediaTypes { get; set; }
 
@@ -106,9 +111,13 @@ namespace FFTool
                 selected.IsSelected = true;
                 UpdateFormatOptions(selected.Name);
 
-                // 只在视频类型下显示视频参数和字幕设置
-                VideoAndSubtitlePanel.Visibility = selected.Name == "视频" 
-                    ? Visibility.Visible 
+                // 根据媒体类型显示对应的参数面板
+                VideoAndSubtitlePanel.Visibility = selected.Name == "视频"
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+
+                AudioParametersPanel.Visibility = selected.Name == "音频"
+                    ? Visibility.Visible
                     : Visibility.Collapsed;
             }
         }
@@ -507,8 +516,76 @@ namespace FFTool
             }
             else if (selectedMediaType?.Name == "音频")
             {
-                // 音频转换不需要硬件加速
-                args.Append(" -c:a libmp3lame");
+                // 获取输出格式
+                string outputFormat = Path.GetExtension(outputFile).ToLower();
+
+                // 根据输出格式选择音频编码器
+                switch (outputFormat)
+                {
+                    case ".mp3":
+                        args.Append(" -c:a libmp3lame");
+                        break;
+                    case ".aac":
+                    case ".m4a":
+                        args.Append(" -c:a aac");
+                        break;
+                    case ".flac":
+                        args.Append(" -c:a flac");
+                        break;
+                    case ".ogg":
+                        args.Append(" -c:a libvorbis");
+                        break;
+                    case ".wav":
+                        args.Append(" -c:a pcm_s16le");
+                        break;
+                    case ".wma":
+                        args.Append(" -c:a wmav2");
+                        break;
+                    default:
+                        args.Append(" -c:a libmp3lame");
+                        break;
+                }
+
+                // 音频比特率设置
+                int audioBitrate = (int)AudioBitrateSlider.Value;
+                if (outputFormat != ".flac" && outputFormat != ".wav") // 无损格式不需要比特率设置
+                {
+                    args.Append($" -b:a {audioBitrate}k");
+                }
+
+                // 采样率设置
+                if (AudioSampleRateComboBox.SelectedItem is ComboBoxItem sampleRateItem)
+                {
+                    string sampleRate = sampleRateItem.Content.ToString();
+                    args.Append($" -ar {sampleRate}");
+                }
+
+                // 声道设置
+                if (MonoAudioCheckBox.IsChecked == true)
+                {
+                    args.Append(" -ac 1"); // 单声道
+                }
+
+                // 音量调节
+                double audioVolume = AudioVolumeSlider.Value / 100.0;
+                if (Math.Abs(audioVolume - 1.0) > 0.01) // 只有当音量不是100%时才添加滤镜
+                {
+                    args.Append($" -filter:a volume={audioVolume:F2}");
+                }
+
+                // 音频标准化
+                if (NormalizeAudioCheckBox.IsChecked == true)
+                {
+                    if (args.ToString().Contains("-filter:a"))
+                    {
+                        // 如果已经有音频滤镜，则组合使用
+                        args.Replace("-filter:a volume=", "-filter:a loudnorm,volume=");
+                    }
+                    else
+                    {
+                        args.Append(" -filter:a loudnorm");
+                    }
+                }
             }
 
             args.Append($" \"{outputFile}\"");
@@ -654,6 +731,83 @@ namespace FFTool
             selectedSubtitlePath = null;
             SubtitlePathBox.Text = "";
             StatusText.Text = "字幕文件已清除";
+        }
+        // 音频音量滑块值改变事件
+        private void AudioVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (isUpdatingAudioVolumeTextBox) return;
+
+            isUpdatingAudioVolumeSlider = true;
+            if (AudioVolumeTextBox != null)
+            {
+                AudioVolumeTextBox.Text = ((int)e.NewValue).ToString();
+            }
+            isUpdatingAudioVolumeSlider = false;
+        }
+
+        // 音频音量文本框改变事件
+        private void AudioVolumeTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (isUpdatingAudioVolumeSlider) return;
+
+            if (int.TryParse(AudioVolumeTextBox.Text, out int value))
+            {
+                isUpdatingAudioVolumeTextBox = true;
+                if (value >= AudioVolumeSlider.Minimum && value <= AudioVolumeSlider.Maximum)
+                {
+                    AudioVolumeSlider.Value = value;
+                }
+                else if (value < AudioVolumeSlider.Minimum)
+                {
+                    AudioVolumeSlider.Value = AudioVolumeSlider.Minimum;
+                    AudioVolumeTextBox.Text = AudioVolumeSlider.Minimum.ToString();
+                }
+                else if (value > AudioVolumeSlider.Maximum)
+                {
+                    AudioVolumeSlider.Value = AudioVolumeSlider.Maximum;
+                    AudioVolumeTextBox.Text = AudioVolumeSlider.Maximum.ToString();
+                }
+                isUpdatingAudioVolumeTextBox = false;
+            }
+        }
+
+        // 音频比特率滑块值改变事件
+        private void AudioBitrateSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (isUpdatingAudioBitrateTextBox) return;
+
+            isUpdatingAudioBitrateSlider = true;
+            if (AudioBitrateTextBox != null)
+            {
+                AudioBitrateTextBox.Text = ((int)e.NewValue).ToString();
+            }
+            isUpdatingAudioBitrateSlider = false;
+        }
+
+        // 音频比特率文本框改变事件
+        private void AudioBitrateTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (isUpdatingAudioBitrateSlider) return;
+
+            if (int.TryParse(AudioBitrateTextBox.Text, out int value))
+            {
+                isUpdatingAudioBitrateTextBox = true;
+                if (value >= AudioBitrateSlider.Minimum && value <= AudioBitrateSlider.Maximum)
+                {
+                    AudioBitrateSlider.Value = value;
+                }
+                else if (value < AudioBitrateSlider.Minimum)
+                {
+                    AudioBitrateSlider.Value = AudioBitrateSlider.Minimum;
+                    AudioBitrateTextBox.Text = AudioBitrateSlider.Minimum.ToString();
+                }
+                else if (value > AudioBitrateSlider.Maximum)
+                {
+                    AudioBitrateSlider.Value = AudioBitrateSlider.Maximum;
+                    AudioBitrateTextBox.Text = AudioBitrateSlider.Maximum.ToString();
+                }
+                isUpdatingAudioBitrateTextBox = false;
+            }
         }
     }
 }
