@@ -300,6 +300,30 @@ namespace FFTool
                 FilePathBox.Text = selectedFilePath;
                 StatusText.Text = "文件已选择";
 
+                // 如果是音频类型，自动填入真实信息
+                if ((MediaTypeListBox.SelectedItem as MediaTypeItem)?.Name == "音频")
+                {
+                    var (br, sr) = AnalyzeAudioInfo(selectedFilePath);
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        // 比特率（限制到滑块范围）
+                        br = Math.Clamp(br, (int)AudioBitrateSlider.Minimum, (int)AudioBitrateSlider.Maximum);
+                        AudioBitrateSlider.Value = br;
+                        AudioBitrateTextBox.Text = br.ToString();
+
+                        // 采样率（找到对应 ComboBoxItem 并选中）
+                        foreach (ComboBoxItem item in AudioSampleRateComboBox.Items)
+                        {
+                            if (item.Content?.ToString() == sr.ToString())
+                            {
+                                AudioSampleRateComboBox.SelectedItem = item;
+                                break;
+                            }
+                        }
+                    });
+                }
+
                 // 自动分析码率
                 int recommendedBitrate = AnalyzeVideoBitrate(selectedFilePath);
                 BitrateTextBox.Text = recommendedBitrate.ToString();
@@ -365,46 +389,77 @@ namespace FFTool
             StatusText.Text = "🔄 正在转换...";
             ProgressBar.Value = 0;
 
+            bool doSplit = SplitVideoAudioCheckBox.IsChecked == true;
+            string outDirCopy = string.IsNullOrEmpty(selectedOutputPath)
+                                ? Path.GetDirectoryName(selectedFilePath)!
+                                : selectedOutputPath;
+
             await Task.Run(() =>
             {
                 try
                 {
-                    using var process = new Process();
-                    process.StartInfo.FileName = "ffmpeg";
-                    process.StartInfo.Arguments = ffmpegArgs;
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.RedirectStandardError = true;
-                    process.StartInfo.CreateNoWindow = true;
-
-                    process.Start();
-
-                    string? line;
-                    while ((line = process.StandardError.ReadLine()) != null)
+                    // 如果勾选了“分离音视频”，则跳过正常转换
+                    if (doSplit)
                     {
-                        if (line.Contains("time="))
+                        string outDir = string.IsNullOrEmpty(outDirCopy)
+                                        ? Path.GetDirectoryName(selectedFilePath)!
+                                        : outDirCopy;
+
+                        string fileNoExt = Path.GetFileNameWithoutExtension(selectedFilePath);
+
+                        // 无声视频（无音轨）
+                        string videoOnlyFile = Path.Combine(outDir, fileNoExt + "_silent" + Path.GetExtension(selectedFilePath));
+                        RunFFmpeg($"-i \"{selectedFilePath}\" -c:v copy -an -y \"{videoOnlyFile}\"");
+
+                        // 纯音频（无画面）
+                        string audioOnlyFile = Path.Combine(outDir, fileNoExt + "_audio.aac");
+                        RunFFmpeg($"-i \"{selectedFilePath}\" -c:a copy -vn -y \"{audioOnlyFile}\"");
+
+                        Dispatcher.Invoke(() =>
                         {
-                            Dispatcher.Invoke(() =>
-                            {
-                                ProgressBar.Value += 2;
-                                if (ProgressBar.Value > 100) ProgressBar.Value = 100;
-                            });
-                        }
+                            StatusText.Text = "✅ 分离完成";
+                            ProgressBar.Value = 100;
+                        });
                     }
-
-                    process.WaitForExit();
-
-                    Dispatcher.Invoke(() =>
+                    else
                     {
-                        StatusText.Text = "✅ 转换完成";
-                        ProgressBar.Value = 100;
-                    });
+                        // 正常转换
+                        using var process = new Process();
+                        process.StartInfo.FileName = "ffmpeg";
+                        process.StartInfo.Arguments = ffmpegArgs;
+                        process.StartInfo.UseShellExecute = false;
+                        process.StartInfo.RedirectStandardError = true;
+                        process.StartInfo.CreateNoWindow = true;
+
+                        process.Start();
+
+                        string? line;
+                        while ((line = process.StandardError.ReadLine()) != null)
+                        {
+                            if (line.Contains("time="))
+                            {
+                                Dispatcher.Invoke(() =>
+                                {
+                                    ProgressBar.Value += 2;
+                                    if (ProgressBar.Value > 100) ProgressBar.Value = 100;
+                                });
+                            }
+                        }
+                        process.WaitForExit();
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            StatusText.Text = "✅ 转换完成";
+                            ProgressBar.Value = 100;
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        MessageBox.Show("转换失败: " + ex.Message);
-                        StatusText.Text = "❌ 转换失败";
+                        MessageBox.Show("转换/分离失败: " + ex.Message);
+                        StatusText.Text = "❌ 失败";
                     });
                 }
             });
@@ -807,6 +862,54 @@ namespace FFTool
                     AudioBitrateTextBox.Text = AudioBitrateSlider.Maximum.ToString();
                 }
                 isUpdatingAudioBitrateTextBox = false;
+            }
+        }
+        private void RunFFmpeg(string arguments)
+        {
+            using var p = new Process();
+            p.StartInfo.FileName = "ffmpeg";
+            p.StartInfo.Arguments = arguments;
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.RedirectStandardError = true;
+            p.StartInfo.CreateNoWindow = true;
+            p.Start();
+            _ = p.StandardError.ReadToEnd(); // 清空错误流，防止阻塞
+            p.WaitForExit();
+        }
+        private (int bitrate, int sampleRate) AnalyzeAudioInfo(string filePath)
+        {
+            try
+            {
+                var p = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "ffmpeg",
+                        Arguments = $"-i \"{filePath}\"",
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                p.Start();
+                string output = p.StandardError.ReadToEnd();
+                p.WaitForExit();
+
+                // 解析比特率
+                var brMatch = System.Text.RegularExpressions.Regex.Match(output, @"bitrate:\s*(\d+)\s*kb/s");
+                int bitrate = brMatch.Success ? int.Parse(brMatch.Groups[1].Value) : 128;
+
+                // 解析采样率（优先 Audio 行，回退 Stream 行）
+                var srMatch = System.Text.RegularExpressions.Regex.Match(output, @"Audio:.*?\s(\d+)\s*Hz");
+                if (!srMatch.Success)
+                    srMatch = System.Text.RegularExpressions.Regex.Match(output, @"Stream.*Audio:.*?\s(\d+)\s*Hz");
+                int sampleRate = srMatch.Success ? int.Parse(srMatch.Groups[1].Value) : 44100;
+
+                return (bitrate, sampleRate);
+            }
+            catch
+            {
+                return (128, 44100); // 默认值
             }
         }
     }

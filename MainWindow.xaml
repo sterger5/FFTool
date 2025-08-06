@@ -469,6 +469,11 @@
                                         Width="120"
                                         Margin="0,0,0,8"/>
 							</StackPanel>
+							<!-- 分离音视频复选框 -->
+							<CheckBox x:Name="SplitVideoAudioCheckBox"
+									  Style="{StaticResource ModernCheckBox}"
+									  Content="分离音视频"
+									  Margin="0,8,0,0"/>
 						</StackPanel>
 					</Border>
 
@@ -742,7 +747,7 @@
 
                         <Slider x:Name="AudioBitrateSlider" Grid.Column="0"
                                 Style="{StaticResource ModernSlider}"
-                                Minimum="64" Maximum="2048" Value="128"
+                                Minimum="64" Maximum="8192" Value="128"
                                 TickFrequency="8"
                                 ValueChanged="AudioBitrateSlider_ValueChanged"
                                 Margin="0,0,12,0"/>
