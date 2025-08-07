@@ -446,7 +446,7 @@ namespace FFTool
 
                         string log = "";
                         string line;
-                        while ((line = process.StandardError.ReadLine()) != null)
+                        while ((line = process.StandardError.ReadLine() ?? "") != "")
                         {
                             log += line + "\n";
 
@@ -542,7 +542,7 @@ namespace FFTool
                 string selectedCodec = "H.264 (AVC)"; // 默认
                 if (VideoCodecComboBox.SelectedItem is ComboBoxItem item)
                 {
-                    selectedCodec = item.Content.ToString();
+                    selectedCodec = item.Content?.ToString() ?? "H.264 (AVC)";
                 }
 
                 if (useNvidiaAcceleration)
@@ -683,7 +683,7 @@ namespace FFTool
                 // 采样率设置
                 if (AudioSampleRateComboBox.SelectedItem is ComboBoxItem sampleRateItem)
                 {
-                    string sampleRate = sampleRateItem.Content.ToString();
+                    string sampleRate = sampleRateItem.Content?.ToString() ?? "44100";
                     args.Append($" -ar {sampleRate}");
                 }
 
