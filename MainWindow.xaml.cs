@@ -375,43 +375,32 @@ namespace FFTool
             string outputExt = format.ToLower();
 
             string outputFileName = Path.GetFileNameWithoutExtension(selectedFilePath);
-
-            // 如果原格式和目标格式相同，自动加后缀
             if (inputExt == outputExt)
-            {
                 outputFileName += "_converted";
-            }
 
             string outputFile = Path.Combine(outputDir, outputFileName + "." + format);
-
             string ffmpegArgs = BuildFFmpegArguments(selectedFilePath, outputFile);
 
             StatusText.Text = "🔄 正在转换...";
             ProgressBar.Value = 0;
 
             bool doSplit = SplitVideoAudioCheckBox.IsChecked == true;
-            string outDirCopy = string.IsNullOrEmpty(selectedOutputPath)
-                                ? Path.GetDirectoryName(selectedFilePath)!
-                                : selectedOutputPath;
 
             await Task.Run(() =>
             {
                 try
                 {
-                    // 如果勾选了“分离音视频”，则跳过正常转换
                     if (doSplit)
                     {
-                        string outDir = string.IsNullOrEmpty(outDirCopy)
-                                        ? Path.GetDirectoryName(selectedFilePath)!
-                                        : outDirCopy;
+                        string outDir = string.IsNullOrEmpty(selectedOutputPath)
+                            ? Path.GetDirectoryName(selectedFilePath)!
+                            : selectedOutputPath;
 
                         string fileNoExt = Path.GetFileNameWithoutExtension(selectedFilePath);
 
-                        // 无声视频（无音轨）
                         string videoOnlyFile = Path.Combine(outDir, fileNoExt + "_silent" + Path.GetExtension(selectedFilePath));
                         RunFFmpeg($"-i \"{selectedFilePath}\" -c:v copy -an -y \"{videoOnlyFile}\"");
 
-                        // 纯音频（无画面）
                         string audioOnlyFile = Path.Combine(outDir, fileNoExt + "_audio.aac");
                         RunFFmpeg($"-i \"{selectedFilePath}\" -c:a copy -vn -y \"{audioOnlyFile}\"");
 
@@ -423,34 +412,69 @@ namespace FFTool
                     }
                     else
                     {
-                        // 正常转换
                         using var process = new Process();
                         process.StartInfo.FileName = "ffmpeg";
                         process.StartInfo.Arguments = ffmpegArgs;
                         process.StartInfo.UseShellExecute = false;
                         process.StartInfo.RedirectStandardError = true;
+                        process.StartInfo.RedirectStandardOutput = true;
                         process.StartInfo.CreateNoWindow = true;
 
                         process.Start();
 
-                        string? line;
-                        while ((line = process.StandardError.ReadLine()) != null)
+                        // 先获取总时长（秒）
+                        double totalSeconds = 0;
+                        var durMatch = System.Text.RegularExpressions.Regex.Match(ffmpegArgs, @"-i ""([^""]+)""");
+                        if (durMatch.Success)
                         {
-                            if (line.Contains("time="))
+                            var durProcess = new Process();
+                            durProcess.StartInfo.FileName = "ffmpeg";
+                            durProcess.StartInfo.Arguments = $"-i \"{durMatch.Groups[1].Value}\"";
+                            durProcess.StartInfo.UseShellExecute = false;
+                            durProcess.StartInfo.RedirectStandardError = true;
+                            durProcess.StartInfo.CreateNoWindow = true;
+                            durProcess.Start();
+                            string durOutput = durProcess.StandardError.ReadToEnd();
+                            durProcess.WaitForExit();
+
+                            var durRegex = System.Text.RegularExpressions.Regex.Match(durOutput, @"Duration:\s*(\d{2}):(\d{2}):(\d{2}\.\d{2})");
+                            if (durRegex.Success)
                             {
-                                Dispatcher.Invoke(() =>
-                                {
-                                    ProgressBar.Value += 2;
-                                    if (ProgressBar.Value > 100) ProgressBar.Value = 100;
-                                });
+                                totalSeconds = TimeSpan.Parse(durRegex.Value.Replace("Duration: ", "")).TotalSeconds;
                             }
                         }
+
+                        string log = "";
+                        string line;
+                        while ((line = process.StandardError.ReadLine()) != null)
+                        {
+                            log += line + "\n";
+
+                            var timeMatch = System.Text.RegularExpressions.Regex.Match(line, @"time=(\d{2}):(\d{2}):(\d{2}\.\d{2})");
+                            if (timeMatch.Success && totalSeconds > 0)
+                            {
+                                double currentSeconds = TimeSpan.Parse(timeMatch.Value.Replace("time=", "")).TotalSeconds;
+                                int percent = (int)(currentSeconds / totalSeconds * 100);
+                                Dispatcher.Invoke(() => ProgressBar.Value = Math.Min(percent, 100));
+                            }
+                        }
+
                         process.WaitForExit();
 
                         Dispatcher.Invoke(() =>
                         {
-                            StatusText.Text = "✅ 转换完成";
-                            ProgressBar.Value = 100;
+                            if (process.ExitCode != 0)
+                            {
+                                string logFile = Path.Combine(Path.GetDirectoryName(selectedFilePath)!, "ffmpeg_error.log");
+                                File.WriteAllText(logFile, log);
+                                MessageBox.Show($"转换失败！\n\n错误日志已保存到：\n{logFile}\n\n请打开这个文件查看详细错误。", "转换失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                                StatusText.Text = "❌ 转换失败";
+                            }
+                            else
+                            {
+                                StatusText.Text = "✅ 转换完成";
+                                ProgressBar.Value = 100;
+                            }
                         });
                     }
                 }
@@ -458,7 +482,7 @@ namespace FFTool
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        MessageBox.Show("转换/分离失败: " + ex.Message);
+                        MessageBox.Show("转换失败: " + ex.Message);
                         StatusText.Text = "❌ 失败";
                     });
                 }
@@ -476,41 +500,89 @@ namespace FFTool
             if (selectedMediaType?.Name == "视频")
             {
                 // 硬件加速设置
-                bool useNvidiaAcceleration = NvidiaAccelerationCheckBox.IsChecked == true && isNvidiaAvailable;
+                bool useNvidiaAcceleration = false;
+                bool autoDowngraded = false;
+
+                if (NvidiaAccelerationCheckBox.IsChecked == true && isNvidiaAvailable)
+                {
+                    try
+                    {
+                        var process = new Process();
+                        process.StartInfo.FileName = "ffmpeg";
+                        process.StartInfo.Arguments = $"-i \"{selectedFilePath}\"";
+                        process.StartInfo.UseShellExecute = false;
+                        process.StartInfo.RedirectStandardError = true;
+                        process.StartInfo.CreateNoWindow = true;
+                        process.Start();
+                        string output = process.StandardError.ReadToEnd();
+                        process.WaitForExit();
+
+                        bool is10bit = output.Contains("yuv420p10le") || output.Contains("Main 10");
+                        bool isSupportedCodec = output.Contains("Video: h264") || output.Contains("Video: hevc");
+
+                        if (is10bit || !isSupportedCodec)
+                        {
+                            autoDowngraded = true;
+                            Dispatcher.Invoke(() =>
+                            {
+                                MessageBox.Show("⚠️ 检测到 10bit HDR 或不支持的编码格式，已自动降级为软件编码以确保兼容性。", "硬件加速提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                            });
+                        }
+                        else
+                        {
+                            useNvidiaAcceleration = true;
+                        }
+                    }
+                    catch
+                    {
+                        useNvidiaAcceleration = false;
+                    }
+                }
+
+                string selectedCodec = "H.264 (AVC)"; // 默认
+                if (VideoCodecComboBox.SelectedItem is ComboBoxItem item)
+                {
+                    selectedCodec = item.Content.ToString();
+                }
 
                 if (useNvidiaAcceleration)
                 {
-                    // 添加硬件解码
-                    args.Insert(0, "-hwaccel cuda -hwaccel_output_format cuda ");
-
-                    // 获取输出格式
-                    string outputFormat = Path.GetExtension(outputFile).ToLower();
-
-                    // 根据输出格式选择合适的英伟达编码器
-                    switch (outputFormat)
+                    switch (selectedCodec)
                     {
-                        case ".mp4":
-                        case ".mkv":
-                        case ".avi":
+                        case "H.264 (AVC)":
                             args.Append(" -c:v h264_nvenc");
                             break;
-                        case ".webm":
-                            // WebM格式，如果支持VP9硬件编码则使用，否则回退到软件编码
-                            args.Append(" -c:v libvpx-vp9");
+                        case "H.265 (HEVC)":
+                            args.Append(" -c:v hevc_nvenc");
+                            break;
+                        case "AV1":
+                            args.Append(" -c:v av1_nvenc");
                             break;
                         default:
                             args.Append(" -c:v h264_nvenc");
                             break;
                     }
-
-                    // 英伟达编码器特定参数
-                    args.Append(" -preset fast");
-                    args.Append(" -rc vbr");
                 }
                 else
                 {
-                    // 软件编码
-                    args.Append(" -c:v libx264");
+                    switch (selectedCodec)
+                    {
+                        case "H.264 (AVC)":
+                            args.Append(" -c:v libx264");
+                            break;
+                        case "H.265 (HEVC)":
+                            args.Append(" -c:v libx265");
+                            break;
+                        case "VP9":
+                            args.Append(" -c:v libvpx-vp9");
+                            break;
+                        case "AV1":
+                            args.Append(" -c:v libaom-av1");
+                            break;
+                        default:
+                            args.Append(" -c:v libx264");
+                            break;
+                    }
                 }
 
                 // 码率设置
@@ -866,16 +938,41 @@ namespace FFTool
         }
         private void RunFFmpeg(string arguments)
         {
-            using var p = new Process();
-            p.StartInfo.FileName = "ffmpeg";
-            p.StartInfo.Arguments = arguments;
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.RedirectStandardError = true;
-            p.StartInfo.CreateNoWindow = true;
-            p.Start();
-            _ = p.StandardError.ReadToEnd(); // 清空错误流，防止阻塞
-            p.WaitForExit();
+            try
+            {
+                using var p = new Process();
+                p.StartInfo.FileName = "ffmpeg";
+                p.StartInfo.Arguments = arguments;
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.RedirectStandardError = true;
+                p.StartInfo.RedirectStandardOutput = true;
+                p.StartInfo.CreateNoWindow = true;
+
+                p.Start();
+
+                // 读取所有错误输出
+                string error = p.StandardError.ReadToEnd();
+                string output = p.StandardOutput.ReadToEnd();
+                p.WaitForExit();
+
+                // 如果出错了，弹窗显示
+                if (p.ExitCode != 0 || error.Contains("Error") || error.Contains("Invalid"))
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show("FFmpeg 报错：\n\n" + error, "转换失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show("运行 FFmpeg 出错：\n\n" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
         }
+
         private (int bitrate, int sampleRate) AnalyzeAudioInfo(string filePath)
         {
             try

@@ -501,6 +501,17 @@
 							<StackPanel>
 								<TextBlock Text="🎥 视频参数设置" FontSize="16" FontWeight="Medium" Foreground="#212529" Margin="0,0,0,16"/>
 
+								<!-- 编码格式选择 -->
+								<StackPanel Margin="0,0,0,16">
+									<TextBlock Text="编码格式" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
+									<ComboBox x:Name="VideoCodecComboBox" Style="{StaticResource ModernComboBox}" Width="200">
+										<ComboBoxItem Content="H.264 (AVC)" IsSelected="True"/>
+										<ComboBoxItem Content="H.265 (HEVC)"/>
+										<ComboBoxItem Content="VP9"/>
+										<ComboBoxItem Content="AV1"/>
+									</ComboBox>
+								</StackPanel>
+
 								<!-- 码率设置 -->
 								<Grid Margin="0,0,0,20">
 									<Grid.RowDefinitions>
@@ -595,34 +606,34 @@
 								<!-- 音量调节选项 -->
 								<TextBlock Text="音量调节" FontSize="14" Foreground="#6c757d" Margin="0,0,0,8"/>
 								<Grid Margin="0,0,0,20">
-    <Grid.RowDefinitions>
-        <RowDefinition Height="Auto"/>
-        <RowDefinition Height="Auto"/>
-        <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
+									<Grid.RowDefinitions>
+										<RowDefinition Height="Auto"/>
+										<RowDefinition Height="Auto"/>
+										<RowDefinition Height="Auto"/>
+									</Grid.RowDefinitions>
 
-    <Grid Grid.Row="1">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="100"/>
-        </Grid.ColumnDefinitions>
+									<Grid Grid.Row="1">
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition Width="*"/>
+											<ColumnDefinition Width="100"/>
+										</Grid.ColumnDefinitions>
 
-        <Slider x:Name="VolumeSlider" Grid.Column="0"
-                Style="{StaticResource ModernSlider}"
-                Minimum="0" Maximum="200" Value="100"
-                TickFrequency="1"
-                ValueChanged="VolumeSlider_ValueChanged"
-                Margin="0,0,12,0"/>
+										<Slider x:Name="VolumeSlider" Grid.Column="0"
+												Style="{StaticResource ModernSlider}"
+												Minimum="0" Maximum="200" Value="100"
+												TickFrequency="1"
+												ValueChanged="VolumeSlider_ValueChanged"
+												Margin="0,0,12,0"/>
 
-        <TextBox x:Name="VolumeTextBox" Grid.Column="1"
-                 Style="{StaticResource ModernTextBox}"
-                 Text="100"
-                 TextChanged="VolumeTextBox_TextChanged"
-                 Margin="0,0,0,8"/>
-    </Grid>
+										<TextBox x:Name="VolumeTextBox" Grid.Column="1"
+												 Style="{StaticResource ModernTextBox}"
+												 Text="100"
+												 TextChanged="VolumeTextBox_TextChanged"
+												 Margin="0,0,0,8"/>
+									</Grid>
 
-    <TextBlock Grid.Row="2" Text="默认100%，范围0-200%" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
-</Grid>
+									<TextBlock Grid.Row="2" Text="默认100%，范围0-200%" FontSize="12" Foreground="#6c757d" Margin="0,4,0,0"/>
+								</Grid>
 							</StackPanel>
 						</Border>
 
