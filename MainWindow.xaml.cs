@@ -412,7 +412,8 @@ namespace FFTool
                     }
                     else
                     {
-                        using var process = new Process();
+                        currentProcess = new Process();
+                        var process = currentProcess;
                         process.StartInfo.FileName = "ffmpeg";
                         process.StartInfo.Arguments = ffmpegArgs;
                         process.StartInfo.UseShellExecute = false;
@@ -463,7 +464,15 @@ namespace FFTool
 
                         Dispatcher.Invoke(() =>
                         {
-                            if (process.ExitCode != 0)
+                            // 用户点了“中止”后 currentProcess 会被设为 null
+                            if (currentProcess == null)
+                            {
+                                Dispatcher.Invoke(() =>
+                                {
+                                    StatusText.Text = "⏹️ 已中止";
+                                });
+                            }
+                            else if (process.ExitCode != 0)
                             {
                                 string logFile = Path.Combine(Path.GetDirectoryName(selectedFilePath)!, "ffmpeg_error.log");
                                 File.WriteAllText(logFile, log);
@@ -499,90 +508,44 @@ namespace FFTool
 
             if (selectedMediaType?.Name == "视频")
             {
-                // 硬件加速设置
+                // 运行时硬件能力检测
                 bool useNvidiaAcceleration = false;
-                bool autoDowngraded = false;
+                string nvEncoder = GetNvEncoderName();   // 获取用户想用的 NVENC 编码器
 
                 if (NvidiaAccelerationCheckBox.IsChecked == true && isNvidiaAvailable)
                 {
-                    try
+                    string filePath = selectedFilePath ?? throw new InvalidOperationException("未选择任何文件");
+                    if (CanUseNvenc(selectedFilePath, nvEncoder))
                     {
-                        var process = new Process();
-                        process.StartInfo.FileName = "ffmpeg";
-                        process.StartInfo.Arguments = $"-i \"{selectedFilePath}\"";
-                        process.StartInfo.UseShellExecute = false;
-                        process.StartInfo.RedirectStandardError = true;
-                        process.StartInfo.CreateNoWindow = true;
-                        process.Start();
-                        string output = process.StandardError.ReadToEnd();
-                        process.WaitForExit();
-
-                        bool is10bit = output.Contains("yuv420p10le") || output.Contains("Main 10");
-                        bool isSupportedCodec = output.Contains("Video: h264") || output.Contains("Video: hevc");
-
-                        if (is10bit || !isSupportedCodec)
+                        useNvidiaAcceleration = true;
+                        args.Append($" -c:v {nvEncoder}");
+                    }
+                    else
+                    {
+                        Dispatcher.Invoke(() =>
                         {
-                            autoDowngraded = true;
-                            Dispatcher.Invoke(() =>
-                            {
-                                MessageBox.Show("⚠️ 检测到 10bit HDR 或不支持的编码格式，已自动降级为软件编码以确保兼容性。", "硬件加速提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                            });
-                        }
-                        else
-                        {
-                            useNvidiaAcceleration = true;
-                        }
-                    }
-                    catch
-                    {
-                        useNvidiaAcceleration = false;
+                            MessageBox.Show(
+                                $"当前硬件或驱动不支持使用 {nvEncoder} 处理此文件，已自动改用软件编码。",
+                                "硬件加速提示",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                            NvidiaAccelerationCheckBox.IsChecked = false; // 去掉勾选
+                        });
                     }
                 }
 
-                string selectedCodec = "H.264 (AVC)"; // 默认
-                if (VideoCodecComboBox.SelectedItem is ComboBoxItem item)
+                if (!useNvidiaAcceleration)
                 {
-                    selectedCodec = item.Content?.ToString() ?? "H.264 (AVC)";
-                }
-
-                if (useNvidiaAcceleration)
-                {
-                    switch (selectedCodec)
+                    // 软件编码分支
+                    string selectedCodec = (VideoCodecComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "H.264 (AVC)";
+                    args.Append(selectedCodec switch
                     {
-                        case "H.264 (AVC)":
-                            args.Append(" -c:v h264_nvenc");
-                            break;
-                        case "H.265 (HEVC)":
-                            args.Append(" -c:v hevc_nvenc");
-                            break;
-                        case "AV1":
-                            args.Append(" -c:v av1_nvenc");
-                            break;
-                        default:
-                            args.Append(" -c:v h264_nvenc");
-                            break;
-                    }
-                }
-                else
-                {
-                    switch (selectedCodec)
-                    {
-                        case "H.264 (AVC)":
-                            args.Append(" -c:v libx264");
-                            break;
-                        case "H.265 (HEVC)":
-                            args.Append(" -c:v libx265");
-                            break;
-                        case "VP9":
-                            args.Append(" -c:v libvpx-vp9");
-                            break;
-                        case "AV1":
-                            args.Append(" -c:v libaom-av1");
-                            break;
-                        default:
-                            args.Append(" -c:v libx264");
-                            break;
-                    }
+                        "H.264 (AVC)" => " -c:v libx264",
+                        "H.265 (HEVC)" => " -c:v libx265",
+                        "VP9" => " -c:v libvpx-vp9",
+                        "AV1" => " -c:v libaom-av1",
+                        _ => " -c:v libx264"
+                    });
                 }
 
                 // 码率设置
@@ -726,6 +689,7 @@ namespace FFTool
                 try
                 {
                     currentProcess.Kill();
+                    currentProcess = null;  // 关键：把变量设成 null，表示“用户主动中止”
                     StatusText.Text = "⏹️ 已中止";
                     ProgressBar.Value = 0;
                 }
@@ -1008,6 +972,58 @@ namespace FFTool
             {
                 return (128, 44100); // 默认值
             }
+        }
+
+        /// <summary>
+        /// 快速检测「这张卡 + 这份文件 + 指定编码器」是否真的能用 NVENC。
+        /// 只跑 5 帧，耗时 1~2 秒。
+        /// </summary>
+        private bool CanUseNvenc(string filePath, string nvEncoder)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = $"-hwaccel cuda -i \"{filePath}\" -c:v {nvEncoder} -frames:v 5 -f null -",
+                    UseShellExecute = false,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using var p = Process.Start(psi);
+                if (p == null) return false;
+
+                string err = p.StandardError.ReadToEnd();
+                p.WaitForExit();
+
+                return p.ExitCode == 0 &&
+                       !err.Contains("not supported", StringComparison.OrdinalIgnoreCase) &&
+                       !err.Contains("no capable device", StringComparison.OrdinalIgnoreCase) &&
+                       !err.Contains("invalid", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 根据用户界面选中的编码器名称，返回对应的 NVENC 编码器字符串
+        /// </summary>
+        private string GetNvEncoderName()
+        {
+            if (VideoCodecComboBox.SelectedItem is ComboBoxItem item)
+            {
+                return item.Content?.ToString() switch
+                {
+                    "H.264 (AVC)" => "h264_nvenc",
+                    "H.265 (HEVC)" => "hevc_nvenc",
+                    "AV1" => "av1_nvenc",
+                    _ => "h264_nvenc"
+                };
+            }
+            return "h264_nvenc";
         }
     }
 }
